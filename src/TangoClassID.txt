@@ -1,0 +1,11 @@
+/**
+ * Device Class Identification:
+ * 
+ * Class Name   :	LeeLaserDS
+ * Contact      :	filip.lindau@maxlab.lu.se
+ * Class Family :	Miscellaneous
+ * Platform     :	Windows
+ * Bus          :	Modbus
+ * Manufacturer :	LeeLaser
+ * Reference    :	LDP200
+ */
