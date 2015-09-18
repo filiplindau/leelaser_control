@@ -122,7 +122,7 @@ class LDP200HardwareParameters:
         self.registers = reg
 
 class LeeLaserControl:
-    def __init__(self, ip='128.100.101.190', port=502, slaveId=1):
+    def __init__(self, ip='172.16.109.58', port=502, slaveId=1):
         '''
         Create an instance of the LeeLaserControl class.
         The targeted device is LDP200. The register map might not
@@ -133,8 +133,11 @@ class LeeLaserControl:
         self.client = None      
         self.connected = False
         self.readLen = 64     # Number of registers to read over modbus
+        self.ip = ip
+        self.port = port
+        self.slaveId = slaveId
         self.ldp200 = LDP200HardwareParameters(self.readLen) 
-        self.initClient(ip, portNbr=port, slvId=slaveId)
+        self.initClient(self.ip, portNbr=self.port, slvId=self.slaveId)
         
         self.minReadTime = 0.3      # Minimum time between reads to prevent overload of hardware in seconds
         self.lastReadTime = time.time()
@@ -160,7 +163,15 @@ class LeeLaserControl:
         
     def connectClient(self):
         if self.client != None:
-            self.connected = self.client.connect()
+            try:
+                self.client = ModbusClient(self.ip, port=self.port)
+                self.connected = self.client.connect()
+            except Exception, e:
+                self.client = None
+                ex = LeeLaserError(''.join(('Could not connect', str(e))))
+                logging.exception(''.join(('Error initializing ModbusClient', str(e))))
+                print 'Error initializing ModbusClient ', str(e)
+                raise(ex)
         
     def closeClient(self):
         if self.client != None:
@@ -188,7 +199,7 @@ class LeeLaserControl:
                 if dt < self.minReadTime:
                     time.sleep(dt)
                 # 59 registers in the register map.
-                rr = self.client.read_input_registers(0, self.readLen, self.slaveId)
+                rr = self.client.read_input_registers(0, self.readLen, unit=self.slaveId)
                 self.lastReadTime = time.time()
                 self.registers = rr
                 if rr.function_code == 4:
@@ -536,7 +547,7 @@ class LeeLaserControl:
     
     def startLaser(self):
         try:
-            rw = self.client.write_coil(0x01, 0xff00, self.slaveId)
+            rw = self.client.write_coil(0x01, 0xff00, unit=self.slaveId)
             if rw.function_code != 0x05:
                 ex = LeeLaserError(''.join(('Start laser failed, return code ', str(rw))))
                 logging.exception(''.join(('Start laser failed, return code ', str(rw))))
@@ -549,7 +560,7 @@ class LeeLaserControl:
 
     def shutdownLaser(self):
         try:
-            rw = self.client.write_coil(0x01, 0x0000, self.slaveId)
+            rw = self.client.write_coil(0x01, 0x0000, unit=self.slaveId)
             if rw.function_code != 0x05:
                 ex = LeeLaserError(''.join(('Shutdown laser failed, return code ', str(rw))))
                 logging.exception(''.join(('Shutdown laser failed, return code ', str(rw))))
@@ -562,7 +573,7 @@ class LeeLaserControl:
             
     def openShutter(self):
         try:
-            rw = self.client.write_coil(0x02, 0xff00, self.slaveId)
+            rw = self.client.write_coil(0x02, 0xff00, unit=self.slaveId)
             if rw.function_code != 0x05:
                 ex = LeeLaserError(''.join(('Open shutter failed, return code ', str(rw))))
                 logging.exception(''.join(('Open shutter failed, return code ', str(rw))))
@@ -575,7 +586,7 @@ class LeeLaserControl:
     
     def closeShutter(self):
         try:
-            rw = self.client.write_coil(0x02, 0x0000, self.slaveId)
+            rw = self.client.write_coil(0x02, 0x0000, unit=self.slaveId)
             if rw.function_code != 0x05:
                 ex = LeeLaserError(''.join(('Close shutter failed, return code ', str(rw))))
                 logging.exception(''.join(('Close shutter failed, return code ', str(rw))))
@@ -588,7 +599,7 @@ class LeeLaserControl:
 
     def clearFault(self):
         try:
-            rw = self.client.write_coil(0x04, 0xff00, self.slaveId)
+            rw = self.client.write_coil(0x04, 0xff00, unit=self.slaveId)
             if rw.function_code != 0x05:
                 ex = LeeLaserError(''.join(('Clear fault failed, return code ', str(rw))))
                 logging.exception(''.join(('Clear fault failed, return code ', str(rw))))
@@ -604,7 +615,7 @@ class LeeLaserControl:
             if (cp >= 0) & (cp <= 100):
                 value = int(cp * 10)
                 if self.client != None:
-                    rw = self.client.write_register(0x01, value, self.slaveId)
+                    rw = self.client.write_register(0x01, value, unit=self.slaveId)
                     if rw.function_code != 0x06:
                         ex = LeeLaserError(''.join(('setPercentCurrent failed, return code ', str(rw))))
                         logging.exception(''.join(('setPercentCurrent failed, return code ', str(rw))))
@@ -625,4 +636,5 @@ class LeeLaserControl:
     
 if __name__ == '__main__':
 #    llc = LeeLaserControl('128.100.101.190')
-    llc = LeeLaserControl('128.100.101.192', port=502, slaveId=0)
+#    llc = LeeLaserControl('128.100.101.192', port=502, slaveId=0)
+    llc = LeeLaserControl('172.16.109.58', port=501, slaveId=2)
